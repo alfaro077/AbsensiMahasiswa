@@ -424,7 +424,11 @@
                 contentType: 'application/json',
                 success: (res) => {
                     closeModal();
-                    table.ajax.reload();
+                    if (submitMode === 'add') {
+                        table.order([0, 'desc']).draw(); // Sort by newest first (descending ID)
+                    } else {
+                        table.ajax.reload();
+                    }
                     showNotification('Berhasil', res.message);
                 },
                 error: (err) => Swal.fire('Gagal!', err.responseJSON?.message || 'Error', 'error')
