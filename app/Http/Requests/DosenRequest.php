@@ -16,13 +16,15 @@ class DosenRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('dosen');
+        $dosen = $id ? \App\Models\Dosen::find($id) : null;
+        $userId = $dosen?->user_id ?? '';
 
         return [
             'nama'     => 'required|string|max:100',
-            'email'    => 'required|email|max:100|unique:users,email,' . ($this->route('dosen') ? \App\Models\Dosen::find($this->route('dosen'))?->user_id : ''),
+            'email'    => 'required|email|max:100|unique:users,email,' . $userId,
             'password' => $id ? 'nullable|string|min:6' : 'required|string|min:6',
             'user_id'  => 'nullable|integer',
-            'nip'      => 'required|string|max:30|unique:dosen,nip,' . $id,
+            'nip'      => 'required|string|max:30|unique:dosen,nip,' . ($dosen?->id ?? ''),
             'jabatan'  => 'nullable|string|max:100',
             'jurusan_id' => 'required|exists:jurusan,id',
         ];

@@ -22,7 +22,8 @@ class PresensiController extends Controller
         $query = Presensi::query();
 
         if ($request->filled('include')) {
-            $includes = explode(',', $request->include);
+            $allowed = ['sesiKuliah', 'sesiKuliah.mataKuliah', 'mahasiswa', 'mahasiswa.user'];
+            $includes = array_intersect(explode(',', $request->include), $allowed);
             $query->with($includes);
         }
 
@@ -104,7 +105,8 @@ class PresensiController extends Controller
         $query = Presensi::query();
 
         if ($request->filled('include')) {
-            $includes = explode(',', $request->include);
+            $allowed = ['sesiKuliah', 'sesiKuliah.mataKuliah', 'mahasiswa', 'mahasiswa.user'];
+            $includes = array_intersect(explode(',', $request->include), $allowed);
             $query->with($includes);
         }
 
@@ -128,6 +130,11 @@ class PresensiController extends Controller
             return $this->notFound('Presensi tidak ditemukan');
         }
 
+        $sesi = \App\Models\SesiKuliah::find($presensi->sesi_id);
+        if (!$sesi || !$sesi->is_active) {
+            return $this->error('Sesi kuliah ini sudah tidak aktif / sudah ditutup, tidak dapat mengubah data kehadiran.', 422);
+        }
+
         $presensi->update($request->validated());
         $presensi->load(['sesiKuliah', 'mahasiswa']);
         return $this->success($presensi, 'Presensi berhasil diperbarui');
@@ -142,6 +149,11 @@ class PresensiController extends Controller
 
         if (!$presensi) {
             return $this->notFound('Presensi tidak ditemukan');
+        }
+
+        $sesi = \App\Models\SesiKuliah::find($presensi->sesi_id);
+        if (!$sesi || !$sesi->is_active) {
+            return $this->error('Sesi kuliah ini sudah tidak aktif / sudah ditutup, tidak dapat menghapus data kehadiran.', 422);
         }
 
         $presensi->delete();
@@ -184,48 +196,89 @@ class PresensiController extends Controller
         }
         
         $enrollments = $query->get();
+        if ($enrollments->isEmpty()) {
+            return $this->success([
+                'summary' => ['total_students' => 0, 'avg_attendance' => 0, 'total_hadir' => 0, 'total_izin' => 0, 'total_sakit' => 0, 'total_alpha' => 0],
+                'details' => []
+            ], 'Laporan rekapitulasi presensi berhasil dibuat');
+        }
+
+        // Batch load all sessions for all relevant mata_kuliah_ids
+        $mkIds = $enrollments->pluck('mata_kuliah_id')->unique()->values()->toArray();
+        $sessionsQuery = \App\Models\SesiKuliah::whereIn('mata_kuliah_id', $mkIds);
+        if ($startDate) {
+            $sessionsQuery->where('tanggal', '>=', $startDate);
+        }
+        if ($endDate) {
+            $sessionsQuery->where('tanggal', '<=', $endDate);
+        }
+        $allSessions = $sessionsQuery->get(['id', 'mata_kuliah_id']);
+        
+        // Group session IDs by mata_kuliah_id
+        $sessionsByMk = [];
+        foreach ($allSessions as $sesi) {
+            $sessionsByMk[$sesi->mata_kuliah_id][] = $sesi->id;
+        }
+        
+        // Count sessions per mata_kuliah_id
+        $sessionCountByMk = array_map('count', $sessionsByMk);
+        
+        // Collect all session IDs and mahasiswa IDs
+        $allSessionIds = $allSessions->pluck('id')->toArray();
+        $allMahasiswaIds = $enrollments->pluck('mahasiswa_id')->unique()->values()->toArray();
+        
+        // Batch load all presensi stats
+        $presensiBatch = \App\Models\Presensi::whereIn('sesi_id', $allSessionIds)
+            ->whereIn('mahasiswa_id', $allMahasiswaIds)
+            ->selectRaw("sesi_id, mahasiswa_id, status")
+            ->get();
+        
+        // Build lookup: [mahasiswa_id][mata_kuliah_id][status] = count
+        $presensiLookup = [];
+        foreach ($presensiBatch as $p) {
+            $mataKuliahIdForSession = null;
+            foreach ($sessionsByMk as $mkId => $sIds) {
+                if (in_array($p->sesi_id, $sIds)) {
+                    $mataKuliahIdForSession = $mkId;
+                    break;
+                }
+            }
+            if ($mataKuliahIdForSession === null) continue;
+            
+            $key = $p->mahasiswa_id . '_' . $mataKuliahIdForSession;
+            if (!isset($presensiLookup[$key])) {
+                $presensiLookup[$key] = ['_total' => 0];
+            }
+            $presensiLookup[$key]['_total']++;
+            $status = $p->status;
+            $presensiLookup[$key][$status] = ($presensiLookup[$key][$status] ?? 0) + 1;
+        }
+        
         $reportData = [];
         
         foreach ($enrollments as $enrollment) {
             $mahasiswaId = $enrollment->mahasiswa_id;
             $mkId = $enrollment->mata_kuliah_id;
+            $key = $mahasiswaId . '_' . $mkId;
             
-            $sessionsQuery = \App\Models\SesiKuliah::where('mata_kuliah_id', $mkId);
-            if ($startDate) {
-                $sessionsQuery->where('tanggal', '>=', $startDate);
-            }
-            if ($endDate) {
-                $sessionsQuery->where('tanggal', '<=', $endDate);
-            }
+            $totalSessions = $sessionCountByMk[$mkId] ?? 0;
+            $stats = $presensiLookup[$key] ?? [];
             
-            $sessionIds = $sessionsQuery->pluck('id');
-            $totalSessions = count($sessionIds);
-            
-            $presensiStats = \App\Models\Presensi::whereIn('sesi_id', $sessionIds)
-                ->where('mahasiswa_id', $mahasiswaId)
-                ->selectRaw("status, count(*) as count")
-                ->groupBy('status')
-                ->pluck('count', 'status')
-                ->toArray();
-                
-            $hadir = $presensiStats['hadir'] ?? 0;
-            $izin = $presensiStats['izin'] ?? 0;
-            $sakit = $presensiStats['sakit'] ?? 0;
-            $pendingIzin = $presensiStats['pending_izin'] ?? 0;
-            $pendingSakit = $presensiStats['pending_sakit'] ?? 0;
-            $explicitAlpha = $presensiStats['alpha'] ?? 0;
+            $hadir = $stats['hadir'] ?? 0;
+            $izin = $stats['izin'] ?? 0;
+            $sakit = $stats['sakit'] ?? 0;
+            $pendingIzin = $stats['pending_izin'] ?? 0;
+            $pendingSakit = $stats['pending_sakit'] ?? 0;
+            $explicitAlpha = $stats['alpha'] ?? 0;
+            $totalPresensiCount = $stats['_total'] ?? 0;
             
             $totalIzin = $izin + $pendingIzin;
             $totalSakit = $sakit + $pendingSakit;
             
-            $totalPresensiCount = \App\Models\Presensi::whereIn('sesi_id', $sessionIds)
-                ->where('mahasiswa_id', $mahasiswaId)
-                ->count();
-                
             $alpha = max(0, $totalSessions - $totalPresensiCount) + $explicitAlpha;
             
             $presentCount = $hadir + $totalIzin + $totalSakit;
-            $percentage = $totalSessions > 0 ? round(($presentCount / $totalSessions) * 100, 1) : 100;
+            $percentage = $totalSessions > 0 ? round(($presentCount / $totalSessions) * 100, 1) : 0;
             
             $reportData[] = [
                 'mahasiswa_id' => $mahasiswaId,

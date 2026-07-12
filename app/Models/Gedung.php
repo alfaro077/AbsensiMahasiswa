@@ -19,4 +19,9 @@ class Gedung extends Model
     {
         return $this->hasMany(JadwalMataKuliah::class, 'gedung_id');
     }
+
+    public function ruangan(): HasMany
+    {
+        return $this->hasMany(Ruangan::class, 'gedung_id');
+    }
 }

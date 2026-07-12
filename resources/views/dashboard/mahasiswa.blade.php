@@ -348,7 +348,7 @@
                                             <h4 class="font-bold text-slate-800 leading-tight">${mk.nama}</h4>
                                             <p class="text-[10px] text-slate-500 mt-0.5">${dosen}</p>
                                             <div class="flex flex-wrap items-center gap-2 mt-2">
-                                                <span class="text-[10px] font-mono text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">${sesi.jam_mulai} - ${sesi.jam_selesai}</span>
+                                                <span class="text-[10px] font-mono text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">${(sesi.jam_mulai || '').substring(0, 5)} - ${(sesi.jam_selesai || '').substring(0, 5)}</span>
                                                 ${sesi.gedung ? `<span class="text-[10px] font-medium text-indigo-700 bg-indigo-50/50 px-1.5 py-0.5 rounded border border-indigo-100/50">📍 ${sesi.gedung}, ${sesi.lantai}, ${sesi.ruangan}</span>` : ''}
                                             </div>
                                         </div>
@@ -388,7 +388,11 @@
     }
 
     function loadEnrolledCourses() {
-        if (!user.mahasiswa?.id) return;
+        const container = $('#enrolled-courses-list');
+        if (!user.mahasiswa?.id || user.role !== 'mahasiswa') {
+            container.html(`<div class="text-center py-8 text-slate-400 italic text-xs">Tidak ada data mata kuliah.</div>`);
+            return;
+        }
 
         $.get(`/api/mata-kuliah?include=dosen.user`, function(res) {
             const courses = res.data.data;

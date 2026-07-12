@@ -26,7 +26,7 @@ class ProfileController extends Controller
 
     /**
      * PUT /api/profile
-     * Memperbarui nama, email, dan password milik user sendiri.
+     * Memperbarui nama, email, password, dan telegram_chat_id milik user sendiri.
      */
     public function update(Request $request): JsonResponse
     {
@@ -42,6 +42,7 @@ class ProfileController extends Controller
                 Rule::unique('users')->ignore($user->id),
             ],
             'password' => 'nullable|string|min:8',
+            'telegram_chat_id' => 'nullable|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -61,10 +62,14 @@ class ProfileController extends Controller
             $user->password = Hash::make($data['password']);
         }
 
+        if (array_key_exists('telegram_chat_id', $data)) {
+            $user->telegram_chat_id = $data['telegram_chat_id'] ?: null;
+        }
+
         $user->save();
 
         return $this->success(
-            $user->load(['mahasiswa.jurusan', 'dosen.jurusan']), 
+            $user->load(['mahasiswa.jurusan', 'dosen.jurusan']),
             'Profil berhasil diperbarui'
         );
     }

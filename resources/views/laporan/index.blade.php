@@ -58,13 +58,13 @@
             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.586A1 1 0 013 6.586V4z"></path></svg>
             Filter Data Rekapitulasi
         </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Filter Tahun Ajaran -->
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Tahun Ajaran</label>
                 <select id="filter-tahun-ajaran" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium">
                     <option value="">Semua Tahun Ajaran</option>
-                    <option value="2023/2024" selected>2023/2024</option>
+                    <option value="2023/2024">2023/2024</option>
                     <option value="2024/2025">2024/2025</option>
                     <option value="2025/2026">2025/2026</option>
                     <option value="2026/2027">2026/2027</option>
@@ -87,15 +87,7 @@
                 </select>
             </div>
 
-            <!-- Filter Tanggal -->
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Rentang Tanggal</label>
-                <div class="flex gap-2">
-                    <input type="date" id="filter-start-date" class="w-1/2 rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500">
-                    <span class="text-slate-400 self-center text-xs">s/d</span>
-                    <input type="date" id="filter-end-date" class="w-1/2 rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-            </div>
+
         </div>
     </div>
 
@@ -110,9 +102,7 @@
         <div>
             <span class="font-bold text-slate-700">Jurusan:</span> <span id="print-meta-jurusan">-</span>
         </div>
-        <div>
-            <span class="font-bold text-slate-700">Rentang Tanggal:</span> <span id="print-meta-tgl">-</span>
-        </div>
+
     </div>
 
     <!-- Statistics Grid Cards (Visuals hidden or minimal in print) -->
@@ -198,20 +188,32 @@
 @push('styles')
 <style>
     @media print {
-        /* Reset layout container limitations to fix PDF clipping */
-        html, body, #app-body, .flex, main, .flex-grow, #main-content {
+        /* Reset all containers for printing */
+        html, body, #app-body, main, #main-content {
             overflow: visible !important;
             height: auto !important;
             min-height: auto !important;
+            max-height: none !important;
             display: block !important;
-            position: static !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
-        
+
+        /* Force overflow visible on all parent elements to prevent clipping */
+        #app-body, #app-body *, main, main *, #main-content, #main-content * {
+            overflow: visible !important;
+            max-height: none !important;
+        }
+
+        /* Override DataTables wrapper overflow */
+        .dataTables_wrapper, .dataTables_scroll, .dataTables_scrollBody, .dataTables_scrollHead {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+        }
+
         .print\:hidden {
-            display: none !important;
-        }
-        
-        aside, nav, header, footer, #sidebar, #top-bar, #sidebar-backdrop {
             display: none !important;
         }
         
@@ -220,12 +222,21 @@
             padding: 0 !important;
             width: 100% !important;
         }
+
+        /* Reset the card container */
+        .bg-white.rounded-2xl {
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            overflow: visible !important;
+        }
         
         table {
             width: 100% !important;
             border-collapse: collapse !important;
             border: 1px solid #1e293b !important;
             page-break-inside: auto;
+            table-layout: auto !important;
         }
         
         tr {
@@ -235,13 +246,22 @@
         
         th, td {
             border: 1px solid #94a3b8 !important;
-            padding: 6px !important;
+            padding: 4px 6px !important;
             color: black !important;
             background: transparent !important;
+            font-size: 9px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
         }
         
         thead {
             display: table-header-group !important;
+        }
+
+        /* Ensure all columns get equal visibility */
+        th, td {
+            min-width: auto !important;
+            width: auto !important;
         }
     }
 </style>
@@ -380,6 +400,15 @@
             $('#admin-report-tabs').removeClass('hidden');
         }
 
+        // Auto-select current academic year
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const ta = month >= 7 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
+        if ($(`#filter-tahun-ajaran option[value="${ta}"]`).length) {
+            $('#filter-tahun-ajaran').val(ta);
+        }
+
         // Load distinct options for Jurusan and Mata Kuliah to populate filters
         loadFilterDropdowns();
 
@@ -387,7 +416,7 @@
         switchReportTab('presensi');
 
         // Trigger loading data on change of filters
-        $('#filter-tahun-ajaran, #filter-jurusan, #filter-mata-kuliah, #filter-start-date, #filter-end-date').on('change', function() {
+        $('#filter-tahun-ajaran, #filter-jurusan, #filter-mata-kuliah').on('change', function() {
             if (currentTab === 'presensi') {
                 refreshReportData();
             }
@@ -510,22 +539,17 @@
         const ta = $('#filter-tahun-ajaran').val();
         const mkId = $('#filter-mata-kuliah').val();
         const jurId = $('#filter-jurusan').val();
-        const sd = $('#filter-start-date').val();
-        const ed = $('#filter-end-date').val();
 
         // Update Metadata for Print
         $('#print-meta-ta').text(ta || 'Semua Tahun Ajaran');
         $('#print-meta-mk').text($('#filter-mata-kuliah option:selected').text() || 'Semua Mata Kuliah');
         $('#print-meta-jurusan').text($('#filter-jurusan option:selected').text() || 'Semua Jurusan');
-        $('#print-meta-tgl').text(sd && ed ? `${sd} s/d ${ed}` : (sd ? `>= ${sd}` : (ed ? `<= ${ed}` : 'Semua Tanggal')));
 
         // Prepare Query String
         let queryParams = [];
         if (ta) queryParams.push(`tahun_ajaran=${encodeURIComponent(ta)}`);
         if (mkId) queryParams.push(`mata_kuliah_id=${mkId}`);
         if (jurId) queryParams.push(`jurusan_id=${jurId}`);
-        if (sd) queryParams.push(`start_date=${sd}`);
-        if (ed) queryParams.push(`end_date=${ed}`);
         
         const url = '/api/laporan/presensi?' + queryParams.join('&');
 
@@ -590,7 +614,7 @@
         } else if (currentTab === 'dosen') {
             sheetName = "Data Dosen";
             wsData = activeData.map(row => ({
-                'NIDN': row.nidn,
+                'NIP': row.nip,
                 'Nama Dosen': row.user?.nama || '-',
                 'Email': row.user?.email || '-',
                 'Jurusan': row.jurusan?.nama || '-'
@@ -607,9 +631,9 @@
         } else if (currentTab === 'gedung') {
             sheetName = "Data Gedung";
             wsData = activeData.map(row => ({
-                'Nama Gedung': row.gedung,
-                'Lantai': row.lantai,
-                'Ruangan': row.ruangan
+                'Kode Gedung': row.kode,
+                'Nama Gedung': row.nama,
+                'Lokasi': row.lokasi
             }));
         } else if (currentTab === 'jurusan') {
             sheetName = "Data Jurusan";

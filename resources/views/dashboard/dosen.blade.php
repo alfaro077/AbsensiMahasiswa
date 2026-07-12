@@ -222,6 +222,7 @@
     let sesiTable, qrGenerator;
     let editingSesiId = null;
     let editingSesiActive = 1;
+    let currentSesiActive = true;
     const user = JSON.parse(localStorage.getItem('user'));
     // Cache jadwal per mata kuliah
     let jadwalCache = {};
@@ -295,16 +296,17 @@
                 $('#jam_selesai').val(jadwal.jam_selesai?.substring(0, 5));
 
                 // Auto-fill location (hidden fields for submit)
-                const gedungName = jadwal.gedung?.nama || jadwal.gedung || '-';
+                const ruang = jadwal.ruangan;
+                const gedungName = jadwal.gedung?.nama || '-';
                 $('#gedung').val(gedungName);
-                $('#lantai').val(jadwal.lantai);
-                $('#ruangan').val(jadwal.ruangan);
+                $('#lantai').val(ruang?.lantai || '-');
+                $('#ruangan').val(ruang?.nama || '-');
 
                 // Show info card
                 $('#info-hari').text(jadwal.hari);
                 $('#info-waktu').text(`${jadwal.jam_mulai?.substring(0, 5)} - ${jadwal.jam_selesai?.substring(0, 5)}`);
                 $('#info-gedung').text(gedungName);
-                $('#info-lantai-ruangan').text(`Lt. ${jadwal.lantai}, ${jadwal.ruangan}`);
+                $('#info-lantai-ruangan').text(`Lt. ${ruang?.lantai || '-'}, ${ruang?.nama || '-'}`);
                 $('#jadwal-info-card').removeClass('hidden');
             }
         });
@@ -327,12 +329,18 @@
                 { 
                     data: 'tanggal',
                     className: 'p-4 text-slate-600',
-                    render: val => `<div class="flex items-center gap-2"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>${val}</div>`
+                    render: val => {
+                        if (!val) return '<span class="text-slate-300 italic">-</span>';
+                        const dateStr = val.includes('T') ? val : val + 'T00:00:00';
+                        const d = new Date(dateStr);
+                        const tgl = isNaN(d.getTime()) ? val : d.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+                        return `<div class="flex items-center gap-2"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>${tgl}</div>`;
+                    }
                 },
                 { 
                     data: null, 
                     className: 'p-4 text-slate-500',
-                    render: row => `<div class="flex items-center gap-2"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>${row.jam_mulai} - ${row.jam_selesai}</div>` 
+                    render: row => `<div class="flex items-center gap-2"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>${(row.jam_mulai || '').substring(0, 5)} - ${(row.jam_selesai || '').substring(0, 5)}</div>` 
                 },
                 { 
                     data: null, 
@@ -472,7 +480,7 @@
         select.empty().append('<option value="">Memuat jadwal...</option>');
         $('#no-jadwal-msg').addClass('hidden');
 
-        $.get(`/api/jadwal-mata-kuliah?mata_kuliah_id=${mkId}`, function(res) {
+        $.get(`/api/jadwal-mata-kuliah?mata_kuliah_id=${mkId}&include=gedung,ruangan`, function(res) {
             const jadwalList = res.data?.data || res.data || [];
             jadwalCache[mkId] = jadwalList;
 
@@ -485,8 +493,9 @@
                 $('#no-jadwal-msg').addClass('hidden');
                 select.prop('required', true);
                 jadwalList.forEach(j => {
-                    const gedungName = j.gedung?.nama || j.gedung || '-';
-                    const label = `${j.hari}, ${j.jam_mulai?.substring(0,5)}-${j.jam_selesai?.substring(0,5)} | ${gedungName} Lt.${j.lantai} R.${j.ruangan}`;
+                    const ruang = j.ruangan;
+                    const gedungName = j.gedung?.nama || '-';
+                    const label = `${j.hari}, ${j.jam_mulai?.substring(0,5)}-${j.jam_selesai?.substring(0,5)} | ${gedungName} Lt.${ruang?.lantai || '-'} R.${ruang?.nama || '-'}`;
                     select.append(`<option value="${j.id}">${label}</option>`);
                 });
             }
@@ -547,7 +556,7 @@
             select.empty().append('<option value="">Memuat jadwal...</option>');
             $('#no-jadwal-msg').addClass('hidden');
 
-            $.get(`/api/jadwal-mata-kuliah?mata_kuliah_id=${sesi.mata_kuliah_id}`, function(jRes) {
+            $.get(`/api/jadwal-mata-kuliah?mata_kuliah_id=${sesi.mata_kuliah_id}&include=gedung,ruangan`, function(jRes) {
                 const jadwalList = jRes.data?.data || jRes.data || [];
                 jadwalCache[sesi.mata_kuliah_id] = jadwalList;
 
@@ -562,14 +571,15 @@
                     
                     let matchedJadwalId = "";
                     jadwalList.forEach(j => {
-                        const gedungName = j.gedung?.nama || j.gedung || '-';
-                        const label = `${j.hari}, ${j.jam_mulai?.substring(0,5)}-${j.jam_selesai?.substring(0,5)} | ${gedungName} Lt.${j.lantai} R.${j.ruangan}`;
+                        const ruang = j.ruangan;
+                        const gedungName = j.gedung?.nama || '-';
+                        const label = `${j.hari}, ${j.jam_mulai?.substring(0,5)}-${j.jam_selesai?.substring(0,5)} | ${gedungName} Lt.${ruang?.lantai || '-'} R.${ruang?.nama || '-'}`;
                         select.append(`<option value="${j.id}">${label}</option>`);
 
                         if (
-                            j.lantai == sesi.lantai &&
-                            j.ruangan == sesi.ruangan &&
-                            (j.gedung?.nama == sesi.gedung || j.gedung == sesi.gedung)
+                            ruang?.lantai == sesi.lantai &&
+                            ruang?.nama == sesi.ruangan &&
+                            j.gedung?.nama == sesi.gedung
                         ) {
                             matchedJadwalId = j.id;
                         }
@@ -578,11 +588,12 @@
                     if (matchedJadwalId) {
                         select.val(matchedJadwalId);
                         const matched = jadwalList.find(j => j.id == matchedJadwalId);
+                        const ruang = matched.ruangan;
+                        const gedungName = matched.gedung?.nama || '-';
                         $('#info-hari').text(matched.hari);
-                        const gedungName = matched.gedung?.nama || matched.gedung || '-';
                         $('#info-waktu').text(`${matched.jam_mulai?.substring(0, 5)} - ${matched.jam_selesai?.substring(0, 5)}`);
                         $('#info-gedung').text(gedungName);
-                        $('#info-lantai-ruangan').text(`Lt. ${matched.lantai}, R. ${matched.ruangan}`);
+                        $('#info-lantai-ruangan').text(`Lt. ${ruang?.lantai || '-'}, R. ${ruang?.nama || '-'}`);
                         $('#jadwal-info-card').removeClass('hidden');
                     } else {
                         $('#jadwal-info-card').addClass('hidden');
@@ -618,6 +629,7 @@
 
         $.get(`/api/sesi-kuliah/${id}?include=mataKuliah.mahasiswa.user,presensi.mahasiswa.user`, function(res) {
             const data = res.data;
+            currentSesiActive = data.is_active;
             const enrolled = data.mata_kuliah?.mahasiswa || [];
             const presensiMap = {};
             
@@ -680,46 +692,79 @@
                         const targetStatus = currentStatus === 'pending_izin' ? 'izin' : 'sakit';
                         const reason = p.keterangan || '(Tanpa alasan)';
                         
-                        statusHtml = `
-                            <div class="flex flex-col items-end gap-1 bg-amber-50/50 p-2 rounded-xl border border-amber-200 shadow-sm max-w-[280px] ml-auto">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></span>
-                                    <span class="text-[9px] font-black uppercase tracking-widest text-amber-700">⌛ Pengajuan ${leaveType}</span>
+                        if (currentSesiActive) {
+                            statusHtml = `
+                                <div class="flex flex-col items-end gap-1 bg-amber-50/50 p-2 rounded-xl border border-amber-200 shadow-sm max-w-[280px] ml-auto">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></span>
+                                        <span class="text-[9px] font-black uppercase tracking-widest text-amber-700">⌛ Pengajuan ${leaveType}</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-600 font-medium italic text-right max-h-12 overflow-y-auto break-all my-1 px-1" title="${reason}">
+                                        "${reason}"
+                                    </p>
+                                    <div class="flex gap-1.5 mt-0.5">
+                                        <button 
+                                            data-reason="${p.keterangan || ''}" 
+                                            data-metode="${p.metode}"
+                                            onclick="approvePending(${presensiId}, '${targetStatus}', ${data.id}, ${m.id}, this.dataset.metode, this.dataset.reason)" 
+                                            class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-bold uppercase transition-all shadow-sm active:scale-95 flex items-center gap-1">
+                                            ✔ Setujui
+                                        </button>
+                                        <button onclick="rejectPending(${presensiId}, ${data.id})" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[9px] font-bold uppercase transition-all shadow-sm active:scale-95 flex items-center gap-1">
+                                            ✖ Tolak
+                                        </button>
+                                    </div>
                                 </div>
-                                <p class="text-[10px] text-slate-600 font-medium italic text-right max-h-12 overflow-y-auto break-all my-1 px-1" title="${reason}">
-                                    "${reason}"
-                                </p>
-                                <div class="flex gap-1.5 mt-0.5">
-                                    <button 
-                                        data-reason="${p.keterangan || ''}" 
-                                        data-metode="${p.metode}"
-                                        onclick="approvePending(${presensiId}, '${targetStatus}', ${data.id}, ${m.id}, this.dataset.metode, this.dataset.reason)" 
-                                        class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-bold uppercase transition-all shadow-sm active:scale-95 flex items-center gap-1">
-                                        ✔ Setujui
-                                    </button>
-                                    <button onclick="rejectPending(${presensiId}, ${data.id})" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[9px] font-bold uppercase transition-all shadow-sm active:scale-95 flex items-center gap-1">
-                                        ✖ Tolak
-                                    </button>
+                            `;
+                        } else {
+                            statusHtml = `
+                                <div class="flex flex-col items-end gap-1 bg-amber-50/50 p-2 rounded-xl border border-amber-200 shadow-sm max-w-[280px] ml-auto">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[9px] font-black uppercase tracking-widest text-amber-700">⌛ Pengajuan ${leaveType}</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-600 font-medium italic text-right max-h-12 overflow-y-auto break-all my-1 px-1" title="${reason}">
+                                        "${reason}"
+                                    </p>
+                                    <span class="text-[9px] text-slate-400 italic">Sesi ditutup, tidak dapat diubah</span>
                                 </div>
-                            </div>
-                        `;
+                            `;
+                        }
                     } else {
-                        statusHtml = `
-                            <div class="flex items-center justify-end gap-2">
-                                <input type="text" id="${ketId}" value="${p && p.keterangan ? p.keterangan : ''}" placeholder="Alasan / Keterangan..." 
-                                    data-presensi-id="${presensiId}"
-                                    onblur="if(this.dataset.presensiId) updateStudentStatus(${data.id}, ${m.id}, this.dataset.presensiId, $('#${selectId}').val(), this.value)"
-                                    class="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 w-24 sm:w-36 bg-slate-50/50 focus:bg-white transition-all shadow-sm">
-                                <select id="${selectId}" onchange="updateStudentStatus(${data.id}, ${m.id}, '${presensiId}', this.value, $('#${ketId}').val())" 
-                                    class="text-xs px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${selectColorClass}">
-                                    <option value="" ${currentStatus === '' ? 'selected' : ''} class="text-slate-500 bg-white">BELUM HADIR</option>
-                                    <option value="hadir" ${currentStatus === 'hadir' ? 'selected' : ''} class="text-emerald-700 bg-white">HADIR</option>
-                                    <option value="izin" ${currentStatus === 'izin' ? 'selected' : ''} class="text-amber-700 bg-white">IZIN</option>
-                                    <option value="sakit" ${currentStatus === 'sakit' ? 'selected' : ''} class="text-sky-700 bg-white">SAKIT</option>
-                                    <option value="alpha" ${currentStatus === 'alpha' ? 'selected' : ''} class="text-rose-700 bg-white">ALPHA</option>
-                                </select>
-                            </div>
-                        `;
+                        if (currentSesiActive) {
+                            statusHtml = `
+                                <div class="flex items-center justify-end gap-2">
+                                    <input type="text" id="${ketId}" value="${p && p.keterangan ? p.keterangan : ''}" placeholder="Alasan / Keterangan..." 
+                                        data-presensi-id="${presensiId}"
+                                        onblur="if(this.dataset.presensiId) updateStudentStatus(${data.id}, ${m.id}, this.dataset.presensiId, $('#${selectId}').val(), this.value)"
+                                        class="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 w-24 sm:w-36 bg-slate-50/50 focus:bg-white transition-all shadow-sm">
+                                    <select id="${selectId}" onchange="updateStudentStatus(${data.id}, ${m.id}, '${presensiId}', this.value, $('#${ketId}').val())" 
+                                        class="text-xs px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${selectColorClass}">
+                                        <option value="" ${currentStatus === '' ? 'selected' : ''} class="text-slate-500 bg-white">BELUM HADIR</option>
+                                        <option value="hadir" ${currentStatus === 'hadir' ? 'selected' : ''} class="text-emerald-700 bg-white">HADIR</option>
+                                        <option value="izin" ${currentStatus === 'izin' ? 'selected' : ''} class="text-amber-700 bg-white">IZIN</option>
+                                        <option value="sakit" ${currentStatus === 'sakit' ? 'selected' : ''} class="text-sky-700 bg-white">SAKIT</option>
+                                        <option value="alpha" ${currentStatus === 'alpha' ? 'selected' : ''} class="text-rose-700 bg-white">ALPHA</option>
+                                    </select>
+                                </div>
+                            `;
+                        } else {
+                            const statusLabel = currentStatus ? currentStatus.toUpperCase().replace('_', ' ') : 'BELUM HADIR';
+                            const ketText = p && p.keterangan ? p.keterangan : '';
+                            const displayColor = currentStatus === 'hadir' ? 'text-emerald-700 bg-emerald-50' : 
+                                                  currentStatus === 'izin' ? 'text-amber-700 bg-amber-50' :
+                                                  currentStatus === 'sakit' ? 'text-sky-700 bg-sky-50' :
+                                                  currentStatus === 'alpha' ? 'text-rose-700 bg-rose-50' :
+                                                  'text-slate-500 bg-slate-50';
+                            statusHtml = `
+                                <div class="flex flex-col items-end gap-1">
+                                    <span class="text-xs px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider border ${displayColor}">
+                                        ${statusLabel}
+                                    </span>
+                                    ${ketText ? `<span class="text-[10px] text-slate-500 italic max-w-[200px] text-right">"${ketText}"</span>` : ''}
+                                    <span class="text-[9px] text-slate-400 italic">Sesi ditutup</span>
+                                </div>
+                            `;
+                        }
                     }
                     
                     $('#detail-student-list').append(`
@@ -781,6 +826,11 @@
     }
 
     function updateStudentStatus(sesiId, mahasiswaId, presensiId, status, keterangan) {
+        if (!currentSesiActive) {
+            Swal.fire('Sesi Ditutup', 'Tidak dapat mengubah data kehadiran karena sesi sudah ditutup.', 'warning');
+            viewAbsen(sesiId);
+            return;
+        }
         // Jika status kosong (BELUM HADIR), dan presensiId ada, hapus record presensinya
         if (!status) {
             if (presensiId) {
@@ -838,6 +888,10 @@
     }
 
     function approvePending(presensiId, targetStatus, sesiId, mahasiswaId, metode, keterangan) {
+        if (!currentSesiActive) {
+            Swal.fire('Sesi Ditutup', 'Tidak dapat menyetujui pengajuan karena sesi sudah ditutup.', 'warning');
+            return;
+        }
         Swal.fire({
             title: 'Setujui Pengajuan?',
             text: `Apakah Anda yakin ingin menyetujui pengajuan ${targetStatus === 'izin' ? 'Izin' : 'Sakit'} ini?`,
@@ -873,6 +927,10 @@
     }
 
     function rejectPending(presensiId, sesiId) {
+        if (!currentSesiActive) {
+            Swal.fire('Sesi Ditutup', 'Tidak dapat menolak pengajuan karena sesi sudah ditutup.', 'warning');
+            return;
+        }
         Swal.fire({
             title: 'Tolak Pengajuan?',
             text: 'Apakah Anda yakin ingin menolak pengajuan ini? Status mahasiswa akan dikembalikan menjadi Belum Hadir.',

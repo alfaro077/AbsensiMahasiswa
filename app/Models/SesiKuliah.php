@@ -12,13 +12,14 @@ class SesiKuliah extends Model
 
     protected $fillable = [
         'mata_kuliah_id',
+        'gedung',
+        'lantai',
+        'ruangan',
         'tanggal',
         'jam_mulai',
         'jam_selesai',
         'topik',
-        'gedung',
-        'lantai',
-        'ruangan',
+
         'qr_code',
         'kode_unik',
         'kode_expires_at',

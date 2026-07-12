@@ -11,17 +11,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Table 'users' is pre-existing
-        // Table 'password_reset_tokens' is optional and pre-existing
+        if (!Schema::hasTable('users')) {
+            Schema::create('users', function (Blueprint $table) {
+                $table->id();
+                $table->string('nama');
+                $table->string('email')->unique();
+                $table->string('password');
+                $table->enum('role', ['admin', 'dosen', 'mahasiswa']);
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('sessions', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->longText('payload');
-            $table->integer('last_activity')->index();
-        });
+        if (!Schema::hasTable('sessions')) {
+            Schema::create('sessions', function (Blueprint $table) {
+                $table->string('id')->primary();
+                $table->foreignId('user_id')->nullable()->index();
+                $table->string('ip_address', 45)->nullable();
+                $table->text('user_agent')->nullable();
+                $table->longText('payload');
+                $table->integer('last_activity')->index();
+            });
+        }
     }
 
     /**

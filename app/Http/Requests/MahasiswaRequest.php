@@ -16,13 +16,15 @@ class MahasiswaRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('mahasiswa');
+        $mahasiswa = $id ? \App\Models\Mahasiswa::find($id) : null;
+        $userId = $mahasiswa?->user_id ?? '';
 
         return [
             'nama'      => 'required|string|max:100',
-            'email'     => 'required|email|max:100|unique:users,email,' . ($this->route('mahasiswa') ? \App\Models\Mahasiswa::find($this->route('mahasiswa'))?->user_id : ''),
+            'email'     => 'required|email|max:100|unique:users,email,' . $userId,
             'password'  => $id ? 'nullable|string|min:6' : 'required|string|min:6',
             'user_id'   => 'nullable|integer',
-            'nim'       => 'required|string|max:20|unique:mahasiswa,nim,' . $id,
+            'nim'       => 'required|string|max:20|unique:mahasiswa,nim,' . ($mahasiswa?->id ?? ''),
             'jurusan_id'=> 'required|exists:jurusan,id',
             'angkatan'  => 'nullable|integer|digits:4',
         ];

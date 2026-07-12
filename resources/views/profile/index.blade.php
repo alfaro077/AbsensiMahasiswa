@@ -84,6 +84,53 @@
                         </div>
                     </div>
 
+                    <!-- Telegram Bot Connection -->
+                    <div class="h-px bg-slate-100 w-full my-6"></div>
+
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            Notifikasi Telegram
+                        </h3>
+                        <p class="text-sm text-slate-500 mb-4">Hubungkan Telegram untuk menerima notifikasi jadwal setiap pagi pukul 06:00 WIB.</p>
+
+                        <div id="telegram-status" class="mb-4">
+                            <div class="animate-pulse space-y-2">
+                                <div class="h-5 bg-slate-100 rounded w-1/3"></div>
+                            </div>
+                        </div>
+
+                        <div id="telegram-actions" class="flex flex-wrap gap-3">
+                            <button type="button" id="btn-telegram-link" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-blue-100 transition-all flex items-center gap-2 cursor-pointer text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                Hubungkan Telegram
+                            </button>
+                            <button type="button" id="btn-telegram-unlink" class="hidden bg-red-50 hover:bg-red-100 text-red-600 font-bold px-5 py-2.5 rounded-xl border border-red-200 transition-all flex items-center gap-2 cursor-pointer text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Putuskan Koneksi
+                            </button>
+                        </div>
+
+                        <div id="telegram-link-result" class="mt-4 hidden">
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <p class="text-sm font-semibold text-blue-800 mb-2">Klik tombol di bawah untuk menghubungkan:</p>
+                                <a id="telegram-link-url" href="#" target="_blank" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-3 rounded-xl transition-all text-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                    Buka Telegram
+                                </a>
+                                <p class="text-xs text-blue-600 mt-2">Atau salin link ini: <span id="telegram-link-copy" class="font-mono bg-blue-100 px-2 py-1 rounded text-xs break-all"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="h-px bg-slate-100 w-full my-6"></div>
 
                     <!-- Submit Button -->
@@ -272,5 +319,121 @@
             }
         });
     }
+
+    // ─── Telegram Integration ──────────────────────────────
+    function loadTelegramStatus() {
+        $.get('/api/telegram/status', function(res) {
+            const connected = res.data.connected;
+            const chatId = res.data.chat_id;
+            const nama = res.data.nama;
+
+            const statusEl = $('#telegram-status');
+            const linkBtn = $('#btn-telegram-link');
+            const unlinkBtn = $('#btn-telegram-unlink');
+            const linkResult = $('#telegram-link-result');
+
+            if (connected) {
+                statusEl.html(`
+                    <div class="flex items-center gap-2 text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-sm font-semibold">Terhubung sebagai <span class="font-bold">${nama}</span> (Chat ID: ${chatId})</span>
+                    </div>
+                `);
+                linkBtn.hide();
+                unlinkBtn.removeClass('hidden');
+                linkResult.addClass('hidden');
+            } else {
+                statusEl.html(`
+                    <div class="flex items-center gap-2 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        <span class="text-sm">Akun Telegram belum terhubung</span>
+                    </div>
+                `);
+                linkBtn.show();
+                unlinkBtn.addClass('hidden');
+                linkResult.addClass('hidden');
+            }
+        });
+    }
+
+    $(document).on('click', '#btn-telegram-link', function() {
+        const btn = $(this);
+        btn.prop('disabled', true).addClass('opacity-50').html(`
+            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Memproses...
+        `);
+
+        $.post('/api/telegram/link', function(res) {
+            if (res.success) {
+                if (res.data.connected) {
+                    loadTelegramStatus();
+                    Swal.fire({
+                        title: 'Sudah Terhubung',
+                        text: 'Akun Telegram Anda sudah terhubung.',
+                        icon: 'info',
+                        confirmButtonColor: '#4f46e5'
+                    });
+                } else {
+                    const link = res.data.link;
+                    $('#telegram-link-url').attr('href', link);
+                    $('#telegram-link-copy').text(link);
+                    $('#telegram-link-result').removeClass('hidden');
+                    btn.hide();
+                }
+            }
+        }).fail(function(xhr) {
+            const msg = xhr.responseJSON?.message || 'Gagal membuat link.';
+            Swal.fire({
+                title: 'Gagal',
+                text: msg,
+                icon: 'error',
+                confirmButtonColor: '#ef4444'
+            });
+        }).always(function() {
+            btn.prop('disabled', false).removeClass('opacity-50').html(`
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Hubungkan Telegram
+            `);
+        });
+    });
+
+    $(document).on('click', '#btn-telegram-unlink', function() {
+        Swal.fire({
+            title: 'Putuskan Koneksi?',
+            text: 'Anda tidak akan menerima notifikasi Telegram lagi.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, Putuskan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('/api/telegram/unlink', function(res) {
+                    if (res.success) {
+                        loadTelegramStatus();
+                        Swal.fire({
+                            title: 'Berhasil',
+                            text: 'Koneksi Telegram berhasil diputuskan.',
+                            icon: 'success',
+                            confirmButtonColor: '#4f46e5'
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // Load Telegram status after profile is loaded
+    setTimeout(loadTelegramStatus, 100);
 </script>
 @endpush

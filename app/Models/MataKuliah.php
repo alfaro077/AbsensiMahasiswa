@@ -49,4 +49,9 @@ class MataKuliah extends Model
     {
         return $this->hasMany(JadwalMataKuliah::class, 'mata_kuliah_id');
     }
+
+    public function kelasParalel(): HasMany
+    {
+        return $this->hasMany(KelasParalel::class, 'mata_kuliah_id');
+    }
 }

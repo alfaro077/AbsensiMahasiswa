@@ -74,7 +74,7 @@
         }
 
         table = $('#jurusan-table').DataTable({
-            ajax: { url: '/api/jurusan', dataSrc: 'data.data' },
+            ajax: { url: '/api/jurusan?per_page=500', dataSrc: 'data.data' },
             columns: [
                 { data: 'id', className: 'p-4 text-slate-500 font-mono' },
                 { data: 'kode', className: 'p-4 font-bold text-indigo-600' },

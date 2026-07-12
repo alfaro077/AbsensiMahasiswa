@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Dosen;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -27,6 +28,33 @@ class MataKuliahRequest extends FormRequest
         ];
     }
 
+    /**
+     * Validasi tambahan: jurusan dosen harus sama dengan jurusan mata kuliah.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            if ($validator->errors()->isNotEmpty()) {
+                return; // skip jika sudah ada error dasar
+            }
+
+            $dosenId = $this->input('dosen_id');
+            $jurusanId = $this->input('jurusan_id');
+
+            if ($dosenId && $jurusanId) {
+                $dosen = Dosen::find($dosenId);
+                if ($dosen && (int) $dosen->jurusan_id !== (int) $jurusanId) {
+                    $dosenNama = $dosen->user?->nama ?? 'Dosen';
+                    $dosenJurusan = $dosen->jurusan?->nama ?? 'jurusan lain';
+                    $validator->errors()->add(
+                        'dosen_id',
+                        "Dosen {$dosenNama} berasal dari {$dosenJurusan}, tidak sesuai dengan jurusan mata kuliah yang dipilih."
+                    );
+                }
+            }
+        });
+    }
+
     public function messages(): array
     {
         return [
@@ -50,3 +78,4 @@ class MataKuliahRequest extends FormRequest
         ], 422));
     }
 }
+

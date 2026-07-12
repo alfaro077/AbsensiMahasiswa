@@ -11,11 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sesi_kuliah', function (Blueprint $table) {
-            $table->string('gedung', 100)->nullable()->after('topik');
-            $table->string('lantai', 50)->nullable()->after('gedung');
-            $table->string('ruangan', 100)->nullable()->after('lantai');
-        });
+        if (Schema::hasTable('sesi_kuliah')) {
+            Schema::table('sesi_kuliah', function (Blueprint $table) {
+                $table->string('gedung', 100)->nullable()->after('topik');
+                $table->string('lantai', 50)->nullable()->after('gedung');
+                $table->string('ruangan', 100)->nullable()->after('lantai');
+            });
+        }
     }
 
     /**
@@ -23,8 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('sesi_kuliah', function (Blueprint $table) {
-            $table->dropColumn(['gedung', 'lantai', 'ruangan']);
-        });
+        if (Schema::hasTable('sesi_kuliah')) {
+            Schema::table('sesi_kuliah', function (Blueprint $table) {
+                $table->dropColumn(['gedung', 'lantai', 'ruangan']);
+            });
+        }
     }
 };

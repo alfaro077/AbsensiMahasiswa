@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Mahasiswa;
 use App\Models\Dosen;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -13,6 +14,7 @@ use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
+    use ApiResponse;
     /**
      * Endpoint Pendaftaran Pengguna (Register).
      *
@@ -38,11 +40,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation errors',
-                'errors' => $validator->errors()
-            ], 422);
+            return $this->validationError($validator->errors(), 'Validasi gagal');
         }
 
         // Terapkan transaksi database untuk memastikan keutuhan data (User + Profil)
@@ -88,10 +86,7 @@ class AuthController extends Controller
             
         } catch (\Exception $e) {
             \DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Registration failed: ' . $e->getMessage(),
-            ], 500);
+            return $this->error('Registration failed: ' . $e->getMessage(), 500);
         }
     }
 
@@ -106,21 +101,14 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation errors',
-                'errors' => $validator->errors()
-            ], 422);
+            return $this->validationError($validator->errors(), 'Validasi gagal');
         }
 
         $user = User::with(['mahasiswa', 'dosen'])->where('email', $request->email)->first();
 
         // Validasi kredensial (email dan password)
         if (! $user || ! Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid email or password'
-            ], 401);
+            return $this->error('Email atau password salah', 401);
         }
 
         // Generate Sanctum token

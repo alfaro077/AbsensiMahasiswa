@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\PresensiController;
 use App\Http\Controllers\Api\SesiKuliahController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\TelegramBotController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -51,9 +52,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Gedung
     Route::apiResource('gedung', \App\Http\Controllers\Api\GedungController::class);
 
+    // Ruangan
+    Route::apiResource('ruangan', \App\Http\Controllers\Api\RuanganController::class);
+
     // Mata Kuliah
     Route::apiResource('mata-kuliah', MataKuliahController::class)
         ->parameters(['mata-kuliah' => 'mata_kuliah']);
+
+    // Kelas Paralel
+    Route::apiResource('kelas-paralel', \App\Http\Controllers\Api\KelasParalelController::class)
+        ->parameters(['kelas-paralel' => 'kelas_paralel']);
 
     // Enrollment
     Route::apiResource('enrollment', EnrollmentController::class);
@@ -73,4 +81,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
+
+    // Telegram
+    Route::post('/telegram/link', [TelegramBotController::class, 'generateLink']);
+    Route::get('/telegram/status', [TelegramBotController::class, 'status']);
+    Route::post('/telegram/unlink', [TelegramBotController::class, 'unlink']);
 });
+
+// Telegram Webhook (public, no auth)
+Route::post('/telegram/webhook', [TelegramBotController::class, 'webhook']);

@@ -55,7 +55,7 @@ trait Filterable
 
         // --- Pagination ---
         $perPage = (int) $request->input('per_page', 15);
-        $perPage = min(max($perPage, 1), 100); // clamp 1–100
+        $perPage = min(max($perPage, 1), 1000); // clamp 1–1000
 
         $paginated = $query->paginate($perPage);
 

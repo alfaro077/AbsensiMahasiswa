@@ -22,7 +22,7 @@ class EnrollmentController extends Controller
         $query = Enrollment::query();
 
         if ($request->filled('include')) {
-            $allowed = ['mahasiswa', 'mataKuliah', 'mahasiswa.user'];
+            $allowed = ['mahasiswa', 'mataKuliah', 'kelasParalel', 'mahasiswa.user'];
             $includes = array_intersect(explode(',', $request->include), $allowed);
             $query->with($includes);
         }
@@ -30,9 +30,9 @@ class EnrollmentController extends Controller
         $result = $this->applyFilters(
             query: $query,
             request: $request,
-            filterableFields: ['mahasiswa_id', 'mata_kuliah_id', 'tahun_ajaran'],
+            filterableFields: ['mahasiswa_id', 'mata_kuliah_id', 'kelas_paralel_id', 'tahun_ajaran'],
             searchableFields: ['tahun_ajaran'],
-            sortableFields: ['id', 'mahasiswa_id', 'mata_kuliah_id', 'tahun_ajaran'],
+            sortableFields: ['id', 'mahasiswa_id', 'mata_kuliah_id', 'kelas_paralel_id', 'tahun_ajaran'],
         );
 
         return $this->success($result, 'Data enrollment berhasil diambil');
@@ -43,6 +43,10 @@ class EnrollmentController extends Controller
      */
     public function store(EnrollmentRequest $request): JsonResponse
     {
+        if ($request->user()->role !== 'admin') {
+            return $this->error('Anda tidak memiliki izin untuk menambah enrollment', 403);
+        }
+
         $enrollment = Enrollment::create($request->validated());
         $enrollment->load(['mahasiswa', 'mataKuliah']);
         return $this->created($enrollment, 'Enrollment berhasil dibuat');
@@ -56,7 +60,7 @@ class EnrollmentController extends Controller
         $query = Enrollment::query();
 
         if ($request->filled('include')) {
-            $allowed = ['mahasiswa', 'mataKuliah', 'mahasiswa.user'];
+            $allowed = ['mahasiswa', 'mataKuliah', 'kelasParalel', 'mahasiswa.user'];
             $includes = array_intersect(explode(',', $request->include), $allowed);
             $query->with($includes);
         }
@@ -75,6 +79,10 @@ class EnrollmentController extends Controller
      */
     public function update(EnrollmentRequest $request, int $id): JsonResponse
     {
+        if ($request->user()->role !== 'admin') {
+            return $this->error('Anda tidak memiliki izin untuk mengubah enrollment', 403);
+        }
+
         $enrollment = Enrollment::find($id);
 
         if (!$enrollment) {
@@ -82,15 +90,19 @@ class EnrollmentController extends Controller
         }
 
         $enrollment->update($request->validated());
-        $enrollment->load(['mahasiswa', 'mataKuliah']);
+        $enrollment->load(['mahasiswa', 'mataKuliah', 'kelasParalel']);
         return $this->success($enrollment, 'Enrollment berhasil diperbarui');
     }
 
     /**
      * DELETE /api/enrollment/{id}
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
+        if ($request->user()->role !== 'admin') {
+            return $this->error('Anda tidak memiliki izin untuk menghapus enrollment', 403);
+        }
+
         $enrollment = Enrollment::find($id);
 
         if (!$enrollment) {

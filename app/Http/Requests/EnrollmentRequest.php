@@ -18,8 +18,8 @@ class EnrollmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mahasiswa_id'   => 'required|integer|exists:mahasiswa,id',
-            'mata_kuliah_id' => [
+            'mahasiswa_id'     => 'required|integer|exists:mahasiswa,id',
+            'mata_kuliah_id'   => [
                 'required',
                 'integer',
                 'exists:mata_kuliah,id',
@@ -37,7 +37,8 @@ class EnrollmentRequest extends FormRequest
                     }
                 }
             ],
-            'tahun_ajaran'   => 'nullable|string|max:10',
+            'kelas_paralel_id' => 'nullable|integer|exists:kelas_paralel,id',
+            'tahun_ajaran'     => 'nullable|string|max:10',
         ];
     }
 

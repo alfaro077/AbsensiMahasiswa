@@ -34,6 +34,14 @@ Route::get('/gedung', function () {
     return view('gedung.index');
 });
 
+Route::get('/ruangan', function () {
+    return view('ruangan.index');
+});
+
+Route::get('/jadwal', function () {
+    return view('jadwal.index');
+});
+
 Route::get('/jurusan', function () {
     return view('jurusan.index');
 });

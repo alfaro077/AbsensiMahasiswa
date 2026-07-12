@@ -43,6 +43,12 @@ class Mahasiswa extends Model
                     ->withPivot('tahun_ajaran');
     }
 
+    public function kelasParalel()
+    {
+        return $this->belongsToMany(KelasParalel::class, 'enrollment', 'mahasiswa_id', 'kelas_paralel_id')
+                    ->withPivot('tahun_ajaran');
+    }
+
     public function presensi(): HasMany
     {
         return $this->hasMany(Presensi::class, 'mahasiswa_id');

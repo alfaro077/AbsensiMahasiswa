@@ -18,6 +18,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'telegram_chat_id',
+        'telegram_token',
     ];
 
     protected $hidden = [
@@ -25,8 +27,6 @@ class User extends Authenticatable
     ];
 
     public $timestamps = false;
-
-    const CREATED_AT = 'created_at';
 
     /**
      * Get the attributes that should be cast.

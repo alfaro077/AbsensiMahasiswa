@@ -12,6 +12,7 @@ class Enrollment extends Model
     protected $fillable = [
         'mahasiswa_id',
         'mata_kuliah_id',
+        'kelas_paralel_id',
         'tahun_ajaran',
     ];
 
@@ -27,5 +28,10 @@ class Enrollment extends Model
     public function mataKuliah(): BelongsTo
     {
         return $this->belongsTo(MataKuliah::class, 'mata_kuliah_id');
+    }
+
+    public function kelasParalel(): BelongsTo
+    {
+        return $this->belongsTo(KelasParalel::class, 'kelas_paralel_id');
     }
 }

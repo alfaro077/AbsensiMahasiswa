@@ -97,7 +97,7 @@
             $('#btn-add-dosen').removeClass('hidden');
         }
         table = $('#dosen-table').DataTable({
-            ajax: { url: '/api/dosen?include=user,jurusan', dataSrc: 'data.data' },
+            ajax: { url: '/api/dosen?include=user,jurusan&per_page=500', dataSrc: 'data.data' },
             columns: [
                 { data: 'id', className: 'p-4 text-slate-500 font-mono' },
                 { data: 'nip', className: 'p-4 font-semibold text-slate-700' },

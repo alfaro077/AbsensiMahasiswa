@@ -22,7 +22,8 @@ class SesiKuliahController extends Controller
         $query = SesiKuliah::query()->withCount('presensi');
 
         if ($request->filled('include')) {
-            $includes = explode(',', $request->include);
+            $allowed = ['mataKuliah', 'mataKuliah.dosen', 'mataKuliah.dosen.user', 'mataKuliah.mahasiswa', 'mataKuliah.mahasiswa.user', 'presensi', 'presensi.mahasiswa', 'presensi.mahasiswa.user'];
+            $includes = array_intersect(explode(',', $request->include), $allowed);
             $query->with($includes);
         }
 
@@ -71,7 +72,8 @@ class SesiKuliahController extends Controller
         $query = SesiKuliah::query()->withCount('presensi');
 
         if ($request->filled('include')) {
-            $includes = explode(',', $request->include);
+            $allowed = ['mataKuliah', 'mataKuliah.dosen', 'mataKuliah.dosen.user', 'mataKuliah.mahasiswa', 'mataKuliah.mahasiswa.user', 'presensi', 'presensi.mahasiswa', 'presensi.mahasiswa.user'];
+            $includes = array_intersect(explode(',', $request->include), $allowed);
             $query->with($includes);
         }
 
