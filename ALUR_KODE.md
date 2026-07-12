@@ -1,4 +1,7 @@
-# Dokumentasi Alur Kode — AbsensiMahasiswa
+# Dokumentasi Teknis Alur Kode — AbsensiMahasiswa
+
+> **📘 Dokumentasi ini berisi penjelasan teknis alur kode** untuk pengembang.
+> Jika Anda mencari dokumentasi untuk presentasi / tugas, buka **`ALUR_PROJEK.md`**.
 
 ## 📋 Daftar Isi
 
