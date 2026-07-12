@@ -53,3 +53,7 @@ Route::get('/profile', function () {
 Route::get('/laporan', function () {
     return view('laporan.index');
 });
+
+Route::get('/telegram-test', function () {
+    return view('telegram-test.index');
+});

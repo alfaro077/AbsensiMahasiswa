@@ -86,6 +86,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/telegram/link', [TelegramBotController::class, 'generateLink']);
     Route::get('/telegram/status', [TelegramBotController::class, 'status']);
     Route::post('/telegram/unlink', [TelegramBotController::class, 'unlink']);
+    Route::get('/telegram/bot-status', [TelegramBotController::class, 'botStatus']);
+    Route::get('/telegram/connected-users', [TelegramBotController::class, 'connectedUsers']);
+    Route::post('/telegram/test-send', [TelegramBotController::class, 'testSend']);
 });
 
 // Telegram Webhook (public, no auth)

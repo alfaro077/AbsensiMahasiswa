@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\JadwalMataKuliah;
 use App\Models\User;
 use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
@@ -115,5 +116,101 @@ class TelegramBotController extends Controller
             'success' => true,
             'message' => 'Akun Telegram berhasil diputuskan.',
         ]);
+    }
+
+    public function botStatus(TelegramService $telegram): JsonResponse
+    {
+        $valid = $telegram->isValidToken();
+        $webhook = $telegram->getWebhookInfo();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'valid' => $valid,
+                'bot_username' => config('services.telegram.bot_username'),
+                'has_token' => !empty(config('services.telegram.bot_token')),
+                'webhook' => $webhook,
+            ],
+        ]);
+    }
+
+    public function connectedUsers(): JsonResponse
+    {
+        $users = User::whereNotNull('telegram_chat_id')
+            ->select('id', 'nama', 'email', 'role', 'telegram_chat_id')
+            ->orderBy('nama')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $users,
+        ]);
+    }
+
+    public function testSend(Request $request, TelegramService $telegram): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+            'type' => 'required|in:custom,schedule',
+            'message' => 'nullable|string|max:4096',
+        ]);
+
+        $user = User::find($validated['user_id']);
+
+        if (empty($user->telegram_chat_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => "User {$user->nama} belum menghubungkan Telegram.",
+            ], 422);
+        }
+
+        if ($validated['type'] === 'custom') {
+            $pesan = $validated['message'] ?? 'Pesan uji coba dari Admin.';
+        } else {
+            $hariIndonesia = [
+                'Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa',
+                'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat',
+                'Saturday' => 'Sabtu',
+            ];
+            $hari = $hariIndonesia[now()->format('l')] ?? now()->format('l');
+
+            $jadwalHariIni = JadwalMataKuliah::with(['mataKuliah', 'gedung', 'ruangan', 'kelasParalel'])
+                ->where('hari', $hari)
+                ->get();
+
+            if ($jadwalHariIni->isEmpty()) {
+                $pesan = "📋 <b>Notifikasi Jadwal (Simulasi)</b>\n\nTidak ada jadwal untuk hari ini ({$hari}).\n\n_Ini adalah pesan uji coba dari Admin._";
+            } else {
+                $lines = ["📋 <b>Notifikasi Jadwal Hari Ini ({$hari}) — Simulasi</b>\n"];
+                foreach ($jadwalHariIni as $j) {
+                    $mk = $j->mataKuliah;
+                    if (!$mk) continue;
+                    $jam = substr($j->jam_mulai, 0, 5) . ' - ' . substr($j->jam_selesai, 0, 5);
+                    $kelas = $j->kelasParalel?->nama_kelas ? " (Kelas {$j->kelasParalel->nama_kelas})" : '';
+                    $ruang = $j->ruangan?->nama ? " - {$j->ruangan->nama}" : '';
+                    $lines[] = "━━━━━━━━━━━━━━━━━━━\n📚 {$mk->nama}{$kelas}\n🕐 {$jam}\n🏢 {$j->gedung?->nama}{$ruang}";
+                }
+                $lines[] = "━━━━━━━━━━━━━━━━━━━\n_Ini adalah pesan uji coba dari Admin._";
+                $pesan = implode("\n", $lines);
+            }
+        }
+
+        $result = $telegram->sendMessage($user->telegram_chat_id, $pesan);
+
+        if ($result) {
+            return response()->json([
+                'success' => true,
+                'message' => "Pesan berhasil dikirim ke {$user->nama}.",
+                'data' => [
+                    'user_nama' => $user->nama,
+                    'chat_id' => $user->telegram_chat_id,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => "Gagal mengirim pesan ke {$user->nama}. Pastikan user sudah chat bot.",
+        ], 500);
     }
 }
