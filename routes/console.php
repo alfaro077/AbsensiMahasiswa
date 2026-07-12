@@ -16,7 +16,7 @@ Artisan::command('schedule:send-notification {--dry-run : Tampilkan daftar tanpa
     ]);
 })->purpose('Kirim notifikasi Telegram jadwal hari ini ke dosen & mahasiswa')->dailyAt('06:00');
 
-Artisan::command('schedule:test-notification', function () {
+Artisan::command('schedule:test-notification {--startup : Kirim notifikasi startup server & selesai}', function () {
     $telegram = app(TelegramService::class);
     $botToken = config('services.telegram.bot_token');
 
@@ -36,6 +36,18 @@ Artisan::command('schedule:test-notification', function () {
         return 1;
     }
 
+    $adminId = env('TELEGRAM_ADMIN_CHAT_ID');
+
+    // Mode startup: kirim notifikasi server aktif, lalu selesai
+    if ($this->option('startup')) {
+        if ($adminId) {
+            $telegram->sendMessage($adminId, "🟢 <b>Server AbsensiMahasiswa Aktif</b>\n━━━━━━━━━━━━━━━━━━━\nServer development berjalan.\nScheduler siap mengirim jadwal.\n━━━━━━━━━━━━━━━━━━━\n" . now()->format('d M Y H:i') . ' WIB');
+            $this->info("Notifikasi startup terkirim ke chat_id: {$adminId}");
+        }
+        return 0;
+    }
+
+    $this->info("Pesan: {$botToken}");
     $adminId = env('TELEGRAM_ADMIN_CHAT_ID');
     if ($adminId) {
         $sent = $telegram->sendMessage($adminId, "✅ Bot AbsensiMahasiswa aktif! Notifikasi jadwal siap.");
@@ -61,7 +73,7 @@ Artisan::command('schedule:test-notification', function () {
     $this->line('4. Klik link yang muncul, tekan Start di Telegram');
     $this->line('5. Jalankan: php artisan schedule:send-notification');
     $this->line('6. Cek Telegram Anda untuk notifikasi jadwal!');
-})->purpose('Test notifikasi Telegram & tampilkan petunjuk');
+})->purpose('Test notifikasi Telegram & kirim notifikasi startup server');
 
 Artisan::command('telegram:set-webhook {url?}', function ($url = null) {
     $telegram = app(TelegramService::class);
