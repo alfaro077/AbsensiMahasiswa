@@ -250,7 +250,11 @@
             const data = res.data?.data || [];
             kelasSelect.empty().append('<option value="">-- Pilih Kelas --</option>');
             data.forEach(k => {
-                kelasSelect.append(`<option value="${k.id}">${k.nama_kelas}</option>`);
+                const opt = document.createElement('option');
+                opt.value = k.id;
+                opt.textContent = k.sudah_terjadwal ? `${k.nama_kelas} (Sudah Terjadwal)` : k.nama_kelas;
+                if (k.sudah_terjadwal) opt.disabled = true;
+                kelasSelect.append(opt);
             });
         }).fail(() => {
             kelasSelect.empty().append('<option value="">-- Gagal memuat kelas --</option>');
@@ -321,7 +325,11 @@
                 const select = $('#jadwal-mata-kuliah-id');
                 select.empty().append('<option value="">-- Pilih Mata Kuliah --</option>');
                 res.data.data.forEach(mk => {
-                    select.append(`<option value="${mk.id}">${mk.nama}</option>`);
+                    const opt = document.createElement('option');
+                    opt.value = mk.id;
+                    opt.textContent = mk.sudah_terjadwal ? `${mk.nama} (Sudah Terjadwal)` : mk.nama;
+                    if (mk.sudah_terjadwal) opt.disabled = true;
+                    select.append(opt);
                 });
                 matkulOptionsLoaded = true;
                 resolve();

@@ -17,6 +17,13 @@ class KelasParalel extends Model
         'tahun_ajaran',
     ];
 
+    protected $appends = ['sudah_terjadwal'];
+
+    public function getSudahTerjadwalAttribute(): bool
+    {
+        return ($this->jadwal_count ?? 0) > 0;
+    }
+
     public function mataKuliah(): BelongsTo
     {
         return $this->belongsTo(MataKuliah::class, 'mata_kuliah_id');

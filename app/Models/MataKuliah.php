@@ -20,7 +20,16 @@ class MataKuliah extends Model
         'dosen_id',
     ];
 
+    protected $appends = ['sudah_terjadwal'];
+
     public $timestamps = false;
+
+    public function getSudahTerjadwalAttribute(): bool
+    {
+        $total = $this->total_kelas ?? 0;
+        $terjadwal = $this->terjadwal_kelas ?? 0;
+        return $total > 0 && $total === $terjadwal;
+    }
 
     // ─── Relationships ──────────────────────────────────
 

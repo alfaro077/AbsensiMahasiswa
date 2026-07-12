@@ -24,6 +24,8 @@ class KelasParalelController extends Controller
             $query->with($includes);
         }
 
+        $query->withCount('jadwal');
+
         $result = $this->applyFilters(
             query: $query,
             request: $request,

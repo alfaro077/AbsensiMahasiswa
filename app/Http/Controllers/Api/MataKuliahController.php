@@ -27,6 +27,11 @@ class MataKuliahController extends Controller
             $query->with($includes);
         }
 
+        $query->withCount([
+            'kelasParalel as total_kelas',
+            'kelasParalel as terjadwal_kelas' => fn($q) => $q->whereHas('jadwal'),
+        ]);
+
         $filterable = ['semester', 'sks', 'dosen_id', 'jurusan_id'];
         
         // Auto-filter based on Role (Secure)
